@@ -1,15 +1,17 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { generateEmbedding } from '@/lib/embeddings/openai'
 import {
   generateImage,
   generateChartImage,
   generateInfographic,
   generateFinancialDashboard,
+  generateDemonstrationImage,
 } from '@/lib/gemini/image-generator'
 import { financialOrchestrator, reportEvaluator } from './orchestrator'
 import { documentAnalyzer } from './document-analyzer'
 import { extractFinancialMetrics, transformToChartData, transformToTableData } from './json-mode'
+import { getKnowledgeBaseForUser } from '@/lib/knowledge/synthesis'
 
 // Initialize Anthropic client with beta headers for PDF support and prompt caching
 const anthropic = new Anthropic({
@@ -66,7 +68,17 @@ Every response should include:
 - dashboard: Executive KPI dashboards with metrics
 - infographic: Visual summaries with icons and data points
 - chart: AI-generated chart images
+- demonstration: Educational images explaining financial concepts - USE THIS for explanatory responses!
 - custom: Any custom financial visualization
+
+## When to Generate Demonstration Images
+Use generate_image with type "demonstration" when:
+- Explaining a financial concept (e.g., "What is EBITDA?", "How does DCF work?")
+- Answering educational questions about finance
+- Illustrating a process or methodology
+- Making complex topics visually understandable
+
+Example: For "What is variance analysis?", generate a demonstration image showing budget vs actual comparison visually.
 
 ## Export Formats (export_file)
 - excel: Create .xlsx files with formatted data
@@ -82,6 +94,53 @@ Every response should include:
 7. When asked to export/download, use export_file tool
 
 Remember: NEVER respond without using at least generate_chart and generate_table tools!`
+
+/**
+ * Build system prompt with user's knowledge base context
+ * This provides the agent with accumulated knowledge from all enabled documents
+ */
+async function buildSystemPromptWithKnowledge(userId: string): Promise<string> {
+  try {
+    const kb = await getKnowledgeBaseForUser(userId)
+
+    if (!kb || !kb.synthesis_text || kb.document_count === 0) {
+      return FINANCE_SYSTEM_PROMPT
+    }
+
+    const lastUpdated = kb.last_synthesized_at
+      ? new Date(kb.last_synthesized_at).toLocaleString()
+      : 'Unknown'
+
+    return `${FINANCE_SYSTEM_PROMPT}
+
+---
+
+## 📚 User's Knowledge Base
+
+You have access to synthesized knowledge from **${kb.document_count} documents** in the user's knowledge base.
+Last updated: ${lastUpdated}
+
+### Executive Summary
+${kb.synthesis_summary}
+
+### Detailed Knowledge
+${kb.synthesis_text}
+
+---
+
+### How to Use This Knowledge
+1. **Reference this knowledge** when answering questions about the user's financial data
+2. **Cite specific metrics** with their values and periods when relevant
+3. **Apply business rules** from the knowledge base in your reasoning
+4. **Always verify** specific values by using the search_documents tool
+5. **Don't make up data** - if something isn't in the knowledge base, say so
+
+This knowledge should inform your reasoning and provide context, but always use search_documents for specific queries.`
+  } catch (error) {
+    console.error('Failed to load knowledge base:', error)
+    return FINANCE_SYSTEM_PROMPT
+  }
+}
 
 // Tool definitions for finance operations
 const financeTools: Anthropic.Tool[] = [
@@ -230,18 +289,18 @@ const financeTools: Anthropic.Tool[] = [
   },
   {
     name: 'generate_image',
-    description: 'Generate a professional AI image visualization using Gemini. Use this for creating infographics, dashboards, and custom financial visualizations.',
+    description: 'Generate a professional AI image visualization using Gemini. Use this for creating infographics, dashboards, demonstration images, and custom financial visualizations. Use type "demonstration" to create educational visual aids that explain financial concepts.',
     input_schema: {
       type: 'object' as const,
       properties: {
         type: {
           type: 'string',
-          enum: ['infographic', 'dashboard', 'chart', 'custom'],
-          description: 'Type of image to generate',
+          enum: ['infographic', 'dashboard', 'chart', 'demonstration', 'custom'],
+          description: 'Type of image to generate. Use "demonstration" for educational concept visualizations.',
         },
         prompt: {
           type: 'string',
-          description: 'Description of the image to generate',
+          description: 'Description of the image to generate. For demonstration type, describe the financial concept to visualize.',
         },
         title: {
           type: 'string',
@@ -263,6 +322,10 @@ const financeTools: Anthropic.Tool[] = [
         period: {
           type: 'string',
           description: 'Time period for the data',
+        },
+        context: {
+          type: 'string',
+          description: 'Additional context for demonstration images (e.g., user question being answered)',
         },
       },
       required: ['type', 'prompt'],
@@ -614,11 +677,12 @@ async function executeSpreadsheetOperation(input: { action: string; filePath?: s
 }
 
 async function executeGenerateImage(input: {
-  type: 'infographic' | 'dashboard' | 'chart' | 'custom'
+  type: 'infographic' | 'dashboard' | 'chart' | 'demonstration' | 'custom'
   prompt: string
   title?: string
   metrics?: { name: string; value: string | number; change?: number; trend?: 'up' | 'down' | 'neutral' }[]
   period?: string
+  context?: string
 }) {
   try {
     let result: { imageData: string; mimeType: string; prompt: string }
@@ -646,6 +710,11 @@ async function executeGenerateImage(input: {
 
       case 'chart':
         result = await generateImage(input.prompt, { style: 'chart' })
+        break
+
+      case 'demonstration':
+        // Generate educational demonstration image to explain financial concepts
+        result = await generateDemonstrationImage(input.prompt, input.context)
         break
 
       default:
@@ -888,11 +957,12 @@ async function executeTool(name: string, input: unknown, userId?: string): Promi
       return executeSpreadsheetOperation(input as { action: string; filePath?: string; sheet?: string; range?: string; data?: unknown[][] })
     case 'generate_image':
       return executeGenerateImage(input as {
-        type: 'infographic' | 'dashboard' | 'chart' | 'custom'
+        type: 'infographic' | 'dashboard' | 'chart' | 'demonstration' | 'custom'
         prompt: string
         title?: string
         metrics?: { name: string; value: string | number; change?: number; trend?: 'up' | 'down' | 'neutral' }[]
         period?: string
+        context?: string
       })
     case 'complex_analysis':
       return executeComplexAnalysis(input as { query: string; targetAudience?: string })
@@ -960,12 +1030,18 @@ export async function streamFinanceChat(
       }
     })
 
+    // Build system prompt with knowledge base if user is authenticated
+    // This loads the synthesized knowledge from all enabled documents
+    const baseSystemPrompt = options?.userId
+      ? await buildSystemPromptWithKnowledge(options.userId)
+      : FINANCE_SYSTEM_PROMPT
+
     // Build system prompt with caching
     // The system prompt is stable and should be cached for efficiency
     const systemWithCache: Anthropic.MessageCreateParams['system'] = [
       {
         type: 'text' as const,
-        text: `${cacheTimestamp}\n${FINANCE_SYSTEM_PROMPT}`,
+        text: `${cacheTimestamp}\n${baseSystemPrompt}`,
         cache_control: { type: 'ephemeral' as const },
       },
     ]

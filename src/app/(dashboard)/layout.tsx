@@ -99,19 +99,30 @@ export default function DashboardLayout({
   }
 
   const handleDeleteThread = async (threadId: string) => {
-    const supabase = createClient()
-
-    await supabase
-      .from('threads')
-      .update({ is_archived: true })
-      .eq('id', threadId)
-
-    // If we're on the deleted thread, go to /chat
-    if (pathname === `/chat/${threadId}`) {
-      router.push('/chat')
+    // Confirm before deleting
+    if (!confirm('Are you sure you want to delete this conversation? This cannot be undone.')) {
+      return
     }
 
-    loadData()
+    try {
+      const response = await fetch(`/api/threads/${threadId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        console.error('Failed to delete thread')
+        return
+      }
+
+      // If we're on the deleted thread, go to /chat
+      if (pathname === `/chat/${threadId}`) {
+        router.push('/chat')
+      }
+
+      loadData()
+    } catch (error) {
+      console.error('Error deleting thread:', error)
+    }
   }
 
   const handleRenameThread = async (threadId: string, newTitle: string) => {

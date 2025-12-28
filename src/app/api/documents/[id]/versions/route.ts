@@ -38,11 +38,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     // Get version history
-    const { data: versions, error: versionsError } = await supabase
-      .from('document_versions')
+    const { data: versions, error: versionsError } = await (supabase
+      .from('document_versions' as any)
       .select('*')
       .eq('document_id', id)
-      .order('version', { ascending: false })
+      .order('version', { ascending: false }))
 
     if (versionsError) {
       console.error('Versions fetch error:', versionsError)
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Archive current version to document_versions
     const { error: archiveError } = await supabase
-      .from('document_versions')
+      .from('document_versions' as any)
       .insert({
         document_id: id,
         version: currentDoc.version || 1,

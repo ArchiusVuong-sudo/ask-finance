@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { synthesizeKnowledgeBase } from '@/lib/knowledge/synthesis'
 
 export const runtime = 'nodejs'
 
@@ -91,7 +92,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       resource_type: 'document',
       resource_id: id,
       details: { updates },
-    })
+    } as any)
+
+    // If is_enabled changed, trigger knowledge base re-synthesis
+    if (is_enabled !== undefined) {
+      synthesizeKnowledgeBase(user.id).catch((err) => {
+        console.error('Knowledge synthesis failed:', err)
+      })
+    }
 
     return NextResponse.json({ document })
   } catch (error) {
@@ -150,6 +158,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       resource_type: 'document',
       resource_id: id,
       details: { name: document.name },
+    })
+
+    // Trigger knowledge base re-synthesis after deletion
+    synthesizeKnowledgeBase(user.id).catch((err) => {
+      console.error('Knowledge synthesis failed:', err)
     })
 
     return NextResponse.json({ success: true })

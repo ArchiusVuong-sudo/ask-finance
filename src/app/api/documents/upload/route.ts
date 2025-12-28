@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { processDocument } from '@/lib/gemini/document-processor'
 import { generateEmbeddings } from '@/lib/embeddings/openai'
+import { synthesizeKnowledgeBase } from '@/lib/knowledge/synthesis'
 import type { DocumentType } from '@/types/database'
 
 export const runtime = 'nodejs'
@@ -113,15 +114,24 @@ async function processDocumentAsync(
     await supabase.from('document_chunks').insert(chunksToInsert as any)
 
     // Update document status
-    await supabase
+    const { data: updatedDoc } = await supabase
       .from('documents')
       .update({
         status: 'completed' as const,
         finance_metadata: result.metadata as any,
       })
       .eq('id', documentId)
+      .select('user_id')
+      .single()
 
     console.log(`Document ${documentId} processed successfully`)
+
+    // Trigger knowledge base synthesis in background
+    if (updatedDoc?.user_id) {
+      synthesizeKnowledgeBase(updatedDoc.user_id).catch((err) => {
+        console.error('Knowledge synthesis failed:', err)
+      })
+    }
   } catch (error) {
     console.error(`Error processing document ${documentId}:`, error)
 

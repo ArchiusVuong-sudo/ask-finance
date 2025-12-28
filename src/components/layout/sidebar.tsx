@@ -14,6 +14,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   TrendingUp,
@@ -21,7 +27,6 @@ import {
   FileText,
   Settings,
   LogOut,
-  MoreHorizontal,
   Trash2,
   Pencil,
   ChevronLeft,
@@ -153,7 +158,7 @@ export function Sidebar({
                   <Link
                     href={`/chat/${thread.id}`}
                     className={cn(
-                      'flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors',
+                      'flex items-center gap-2 px-3 py-2 pr-16 rounded-md text-sm transition-colors',
                       isActive
                         ? 'bg-slate-700 text-white'
                         : 'text-slate-400 hover:text-white hover:bg-slate-800',
@@ -162,37 +167,42 @@ export function Sidebar({
                   >
                     <MessageSquarePlus className="h-4 w-4 shrink-0" />
                     {!collapsed && (
-                      <span className="truncate flex-1">{thread.title}</span>
+                      <span className="truncate max-w-[140px]" title={thread.title || ''}>
+                        {thread.title}
+                      </span>
                     )}
                   </Link>
                 )}
 
                 {!collapsed && !isEditing && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-white hover:bg-slate-700"
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-40">
-                      <DropdownMenuItem onClick={() => startEditing(thread)}>
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Rename
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => onDeleteThread(thread.id)}
-                        className="text-red-600"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        startEditing(thread)
+                      }}
+                      className="h-7 w-7 text-slate-400 hover:text-white hover:bg-slate-700"
+                      title="Rename"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        onDeleteThread(thread.id)
+                      }}
+                      className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-slate-700"
+                      title="Delete"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 )}
               </div>
             )

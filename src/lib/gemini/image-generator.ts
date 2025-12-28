@@ -3,24 +3,21 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 // Initialize the Gemini API client
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
-// Available image generation models
-// Based on: https://ai.google.dev/gemini-api/docs/nanobanana
-const IMAGE_MODELS = {
-  fast: 'gemini-2.5-flash-image', // Nano Banana - optimized for speed
-  pro: 'gemini-3-pro-image-preview', // Nano Banana Pro - advanced reasoning for professional assets
-} as const
+// Image generation model
+// Based on: https://ai.google.dev/gemini-api/docs/image-generation
+const IMAGE_MODEL = 'gemini-3-pro-image-preview'
 
-type ImageModel = keyof typeof IMAGE_MODELS
+// Aspect ratio options
+type AspectRatio = '1:1' | '16:9' | '4:3' | '3:4' | '9:16'
 
 /**
  * Generate an image using Gemini Image Generation
  * Uses gemini-3-pro-image-preview for high-quality professional images
- * Based on: https://ai.google.dev/gemini-api/docs/nanobanana
+ * Based on: https://ai.google.dev/gemini-api/docs/image-generation
  */
 export async function generateImage(prompt: string, options?: {
-  style?: 'chart' | 'infographic' | 'diagram' | 'illustration' | 'financial'
-  aspectRatio?: '1:1' | '16:9' | '4:3'
-  model?: ImageModel
+  style?: 'chart' | 'infographic' | 'diagram' | 'illustration' | 'financial' | 'demonstration'
+  aspectRatio?: AspectRatio
 }): Promise<{
   imageData: string
   mimeType: string
@@ -28,11 +25,13 @@ export async function generateImage(prompt: string, options?: {
   imageUrl?: string
 }> {
   try {
-    // Use the Pro model for best quality, with fallback options
-    const modelName = options?.model ? IMAGE_MODELS[options.model] : IMAGE_MODELS.pro
-
+    // Always use gemini-3-pro-image-preview for high-quality image generation
     const model = genAI.getGenerativeModel({
-      model: modelName,
+      model: IMAGE_MODEL,
+      generationConfig: {
+        // @ts-expect-error - responseModalities is a valid config for image generation
+        responseModalities: ['Text', 'Image'],
+      },
     })
 
     // Enhance prompt based on style for better results
@@ -44,6 +43,7 @@ export async function generateImage(prompt: string, options?: {
         diagram: 'Create a clear technical diagram with labeled components, smooth connections, and professional styling. Suitable for business documentation.',
         illustration: 'Create a professional business illustration with modern, clean aesthetics, soft gradients, and corporate styling.',
         financial: 'Create a professional financial visualization with clean lines, corporate blue/green color scheme, clear data representation, and suitable for executive presentations.',
+        demonstration: 'Create a clear, educational demonstration image that visually explains the concept. Use professional styling with clear labels, step-by-step visuals if applicable, and modern design suitable for presentations.',
       }
       enhancedPrompt = `${stylePrompts[options.style]} ${prompt}`
     }
@@ -53,21 +53,9 @@ export async function generateImage(prompt: string, options?: {
       enhancedPrompt = `${enhancedPrompt} Image aspect ratio: ${options.aspectRatio}.`
     }
 
-    // Generate the image using the Gemini API
-    const result = await model.generateContent({
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            {
-              text: enhancedPrompt,
-            },
-          ],
-        },
-      ],
-    })
-
-    const response = await result.response
+    // Generate the image using the Gemini API with image response modality
+    const result = await model.generateContent(enhancedPrompt)
+    const response = result.response
     const candidates = response.candidates
 
     // Check for image data in the response
@@ -107,6 +95,32 @@ export async function generateImage(prompt: string, options?: {
 
     throw new Error(`Failed to generate image: ${error instanceof Error ? error.message : 'Unknown error'}`)
   }
+}
+
+/**
+ * Generate a demonstration image for explaining financial concepts
+ * This creates visual aids to help explain analysis results
+ */
+export async function generateDemonstrationImage(
+  concept: string,
+  context?: string
+): Promise<{ imageData: string; mimeType: string; prompt: string }> {
+  const prompt = `Create a professional demonstration image that visually explains:
+
+${concept}
+
+${context ? `Context: ${context}` : ''}
+
+Requirements:
+- Clear, educational visualization
+- Use icons, diagrams, or visual metaphors to explain the concept
+- Professional corporate styling with blue/green color palette
+- Clean typography with clear labels
+- Suitable for business presentations
+- Modern, minimalist design
+- White or light gradient background`
+
+  return await generateImage(prompt, { style: 'demonstration', aspectRatio: '16:9' })
 }
 
 /**
