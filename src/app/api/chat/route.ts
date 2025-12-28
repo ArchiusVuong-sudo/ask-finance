@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { streamFinanceChat, type ChatMessage } from '@/lib/agents/finance-agent'
+import { streamFinanceChat, createToolContextAccumulator, type ChatMessage } from '@/lib/agents/finance-agent'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -74,19 +74,65 @@ export async function POST(request: NextRequest) {
       currentThreadId = newThread.id
     }
 
-    // Get thread history
+    // Context Management Strategy:
+    // 1. Limit to last 6 message pairs (12 messages) to stay well under 200k token limit
+    // 2. Truncate individual messages that are too long
+    // 3. Prioritize recent context over older messages
+    // 4. Keep ~50k tokens of conversation history to leave room for:
+    //    - System prompt (~5k tokens)
+    //    - Knowledge base context (~30k tokens)
+    //    - Tool results and visualizations (~50k tokens)
+    //    - New response generation (~10k tokens)
+    const MAX_MESSAGES = 12 // 6 turns of conversation
+    const MAX_MESSAGE_LENGTH = 4000 // ~1k tokens per message max
+    const MAX_TOTAL_CONTENT_LENGTH = 50000 // ~12.5k tokens total for history
+
     const { data: previousMessages } = await supabase
       .from('messages')
-      .select('role, content')
+      .select('role, content, created_at')
       .eq('thread_id', currentThreadId)
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: false })
+      .limit(MAX_MESSAGES)
+
+    // Reverse to get chronological order
+    const chronologicalMessages = (previousMessages || []).reverse()
+
+    // Smart truncation: keep recent messages fuller, truncate older ones more aggressively
+    let totalLength = 0
+    const limitedMessages: ChatMessage[] = []
+
+    for (let i = chronologicalMessages.length - 1; i >= 0; i--) {
+      const m = chronologicalMessages[i]
+      const isRecent = i >= chronologicalMessages.length - 4 // Last 2 turns get full content
+
+      // Calculate allowed length based on position
+      const allowedLength = isRecent ? MAX_MESSAGE_LENGTH : Math.floor(MAX_MESSAGE_LENGTH / 2)
+
+      let content = m.content
+      if (content.length > allowedLength) {
+        content = content.substring(0, allowedLength) + '\n\n[Content summarized for context limit...]'
+      }
+
+      // Check if adding this message would exceed total limit
+      if (totalLength + content.length > MAX_TOTAL_CONTENT_LENGTH && limitedMessages.length >= 2) {
+        // Add a summary note and stop
+        limitedMessages.unshift({
+          role: 'assistant' as const,
+          content: '[Earlier conversation history omitted to stay within context limits. Key points from the conversation are preserved in recent messages.]'
+        })
+        break
+      }
+
+      totalLength += content.length
+      limitedMessages.unshift({
+        role: m.role as 'user' | 'assistant',
+        content
+      })
+    }
 
     // Build messages array
     const messages: ChatMessage[] = [
-      ...(previousMessages || []).map(m => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-      })),
+      ...limitedMessages,
       { role: 'user' as const, content: message },
     ]
 
@@ -101,9 +147,10 @@ export async function POST(request: NextRequest) {
     const stream = new ReadableStream({
       async start(controller) {
         let fullResponse = ''
-        let citations: unknown[] = []
-        let canvasContents: unknown[] = []  // Support multiple canvas items
-        let toolCalls: unknown[] = []
+        const citations: unknown[] = []
+        const canvasContents: unknown[] = []  // Support multiple canvas items
+        const toolCalls: unknown[] = []
+        const toolContextAccumulator = createToolContextAccumulator()  // For multi-turn image generation
 
         const sendEvent = (event: string, data: unknown) => {
           controller.enqueue(
@@ -159,7 +206,7 @@ export async function POST(request: NextRequest) {
                 })
               },
             },
-            { sessionId, userId: user.id }
+            { sessionId, userId: user.id, toolContextAccumulator }
           )
 
           // Save assistant message

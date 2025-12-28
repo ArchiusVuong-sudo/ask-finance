@@ -8,6 +8,7 @@ import { MessageInput } from '@/components/chat/message-input'
 import { Header } from '@/components/layout/header'
 import { CanvasPanel, type CanvasContent } from '@/components/canvas/canvas-panel'
 import type { Message, Thread } from '@/types/database'
+import { buildFeedbackMessage, type ImageFeedbackData } from '@/lib/agents/image-feedback-utils'
 
 interface PageProps {
   params: Promise<{ threadId: string }>
@@ -289,6 +290,14 @@ export default function ThreadPage({ params }: PageProps) {
     setCanvasOpen(true)
   }, [])
 
+  // Handle image feedback from CanvasPanel
+  const handleImageFeedback = useCallback((feedback: ImageFeedbackData) => {
+    // Build the feedback message that the agent will understand
+    const feedbackMessage = buildFeedbackMessage(feedback)
+    // Send it as a new user message
+    handleSend(feedbackMessage)
+  }, [handleSend])
+
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -327,6 +336,8 @@ export default function ThreadPage({ params }: PageProps) {
             allItems={allCanvasItems}
             onClose={() => setCanvasOpen(false)}
             onSelectItem={(item) => setCanvasContent(item)}
+            onImageFeedback={handleImageFeedback}
+            isLoading={isStreaming}
           />
         )}
       </div>

@@ -30,6 +30,114 @@ import {
 import { cn } from '@/lib/utils'
 import { DynamicChart } from './dynamic-chart'
 import { DataTable } from './data-table'
+import { ImageFeedback, type ImageFeedbackData } from './image-feedback'
+
+// Fullscreen Image Viewer Component
+function ImageViewer({
+  src,
+  alt,
+  title
+}: {
+  src: string | null
+  alt: string
+  title?: string
+}) {
+  const [isFullscreen, setIsFullscreen] = useState(false)
+
+  // Handle Escape key to close fullscreen
+  useEffect(() => {
+    if (!isFullscreen) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsFullscreen(false)
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    // Prevent body scroll when fullscreen
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = ''
+    }
+  }, [isFullscreen])
+
+  if (!src) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full space-y-4 p-8">
+        <ImageIcon className="h-16 w-16 text-purple-500" />
+        <p className="text-muted-foreground">Image preview not available</p>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      {/* Normal view */}
+      <div className="flex flex-col items-center justify-center h-full p-4">
+        <div className="relative group cursor-pointer" onClick={() => setIsFullscreen(true)}>
+          <img
+            src={src}
+            alt={alt}
+            className="max-w-full max-h-[60vh] object-contain rounded-lg shadow-lg transition-transform duration-200 group-hover:scale-[1.02]"
+          />
+          {/* Click to expand overlay */}
+          <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors rounded-lg">
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/70 text-white px-4 py-2 rounded-full flex items-center gap-2">
+              <Maximize2 className="h-4 w-4" />
+              <span className="text-sm font-medium">Click to expand</span>
+            </div>
+          </div>
+        </div>
+        {title && (
+          <p className="mt-3 text-sm text-muted-foreground text-center">{title}</p>
+        )}
+      </div>
+
+      {/* Fullscreen modal */}
+      {isFullscreen && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center"
+          onClick={() => setIsFullscreen(false)}
+        >
+          {/* Close button */}
+          <button
+            className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white z-10"
+            onClick={(e) => {
+              e.stopPropagation()
+              setIsFullscreen(false)
+            }}
+          >
+            <X className="h-6 w-6" />
+          </button>
+
+          {/* Title */}
+          {title && (
+            <div className="absolute top-4 left-4 text-white z-10">
+              <h3 className="text-lg font-medium">{title}</h3>
+            </div>
+          )}
+
+          {/* Image container */}
+          <div className="p-8 max-w-[95vw] max-h-[95vh]" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={src}
+              alt={alt}
+              className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+            />
+          </div>
+
+          {/* Instructions */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/60 text-sm">
+            Click anywhere or press Escape to close
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
 
 export interface CanvasContent {
   type: 'chart' | 'table' | 'spreadsheet' | 'image' | 'export'
@@ -46,6 +154,8 @@ interface CanvasPanelProps {
   onClose: () => void
   onExport?: (format: 'excel' | 'powerpoint' | 'image') => void
   onSelectItem?: (item: CanvasContent) => void
+  onImageFeedback?: (feedback: ImageFeedbackData) => void
+  isLoading?: boolean
 }
 
 const canvasConfig = {
@@ -133,11 +243,15 @@ function CanvasContentRenderer({
   onExport,
   isDownloading,
   onDownload,
+  onImageFeedback,
+  isLoadingFeedback,
 }: {
   content: CanvasContent
   onExport?: (format: 'excel' | 'powerpoint' | 'image') => void
   isDownloading?: boolean
   onDownload?: (content: CanvasContent) => Promise<void>
+  onImageFeedback?: (feedback: ImageFeedbackData) => void
+  isLoadingFeedback?: boolean
 }) {
   const config = canvasConfig[content.type] || canvasConfig.chart
 
@@ -207,25 +321,26 @@ function CanvasContentRenderer({
 
     case 'image':
       const imageData = content.data
+      const imageSrc = imageData?.imageUrl ||
+        (imageData?.imageData ? `data:${imageData.mimeType || 'image/png'};base64,${imageData.imageData}` : null)
+
       return (
-        <div className="flex items-center justify-center h-full p-4">
-          {imageData?.imageUrl ? (
-            <img
-              src={imageData.imageUrl}
-              alt={imageData.title || 'Generated image'}
-              className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+        <div className="flex flex-col h-full">
+          <div className="flex-1">
+            <ImageViewer
+              src={imageSrc}
+              alt={imageData?.title || 'Generated image'}
+              title={imageData?.title}
             />
-          ) : imageData?.imageData ? (
-            <img
-              src={`data:${imageData.mimeType || 'image/png'};base64,${imageData.imageData}`}
-              alt={imageData.title || 'Generated image'}
-              className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+          </div>
+          {onImageFeedback && (
+            <ImageFeedback
+              imageId={imageData?.imageId || content.id || `img-${Date.now()}`}
+              originalPrompt={imageData?.originalPrompt || imageData?.prompt}
+              originalImageUrl={imageSrc || undefined}
+              onFeedback={onImageFeedback}
+              disabled={isLoadingFeedback}
             />
-          ) : (
-            <div className="text-center space-y-4">
-              <ImageIcon className="h-16 w-16 mx-auto text-purple-500" />
-              <p className="text-muted-foreground">Image preview not available</p>
-            </div>
           )}
         </div>
       )
@@ -300,7 +415,7 @@ function CanvasContentRenderer({
   }
 }
 
-export function CanvasPanel({ content, allItems = [], onClose, onExport, onSelectItem }: CanvasPanelProps) {
+export function CanvasPanel({ content, allItems = [], onClose, onExport, onSelectItem, onImageFeedback, isLoading }: CanvasPanelProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [isDownloading, setIsDownloading] = useState(false)
@@ -580,7 +695,7 @@ export function CanvasPanel({ content, allItems = [], onClose, onExport, onSelec
                   <div className="space-y-3 p-2">
                     {groupedItems.chart.map((item, idx) => (
                       <div key={idx} className="border rounded-lg overflow-hidden bg-white dark:bg-slate-900">
-                        <CanvasContentRenderer content={item} onExport={onExport} isDownloading={isDownloading} onDownload={handleDownload} />
+                        <CanvasContentRenderer content={item} onExport={onExport} isDownloading={isDownloading} onDownload={handleDownload} onImageFeedback={onImageFeedback} isLoadingFeedback={isLoading} />
                       </div>
                     ))}
                   </div>
@@ -605,7 +720,7 @@ export function CanvasPanel({ content, allItems = [], onClose, onExport, onSelec
                   <div className="space-y-3 p-2">
                     {groupedItems.table.map((item, idx) => (
                       <div key={idx} className="border rounded-lg overflow-hidden bg-white dark:bg-slate-900">
-                        <CanvasContentRenderer content={item} onExport={onExport} isDownloading={isDownloading} onDownload={handleDownload} />
+                        <CanvasContentRenderer content={item} onExport={onExport} isDownloading={isDownloading} onDownload={handleDownload} onImageFeedback={onImageFeedback} isLoadingFeedback={isLoading} />
                       </div>
                     ))}
                   </div>
@@ -655,7 +770,7 @@ export function CanvasPanel({ content, allItems = [], onClose, onExport, onSelec
                       )}
                       onClick={() => handleSelectItem(item, idx)}
                     >
-                      <CanvasContentRenderer content={item} onExport={onExport} isDownloading={isDownloading} onDownload={handleDownload} />
+                      <CanvasContentRenderer content={item} onExport={onExport} isDownloading={isDownloading} onDownload={handleDownload} onImageFeedback={onImageFeedback} isLoadingFeedback={isLoading} />
                     </div>
                   ))}
                 </div>
@@ -665,7 +780,7 @@ export function CanvasPanel({ content, allItems = [], onClose, onExport, onSelec
                 <div className="grid gap-4 p-4">
                   {groupedItems.chart.map((item, idx) => (
                     <div key={idx} className="border rounded-xl overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
-                      <CanvasContentRenderer content={item} onExport={onExport} isDownloading={isDownloading} onDownload={handleDownload} />
+                      <CanvasContentRenderer content={item} onExport={onExport} isDownloading={isDownloading} onDownload={handleDownload} onImageFeedback={onImageFeedback} isLoadingFeedback={isLoading} />
                     </div>
                   ))}
                 </div>
@@ -675,7 +790,7 @@ export function CanvasPanel({ content, allItems = [], onClose, onExport, onSelec
                 <div className="grid gap-4 p-4">
                   {groupedItems.table.map((item, idx) => (
                     <div key={idx} className="border rounded-xl overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
-                      <CanvasContentRenderer content={item} onExport={onExport} isDownloading={isDownloading} onDownload={handleDownload} />
+                      <CanvasContentRenderer content={item} onExport={onExport} isDownloading={isDownloading} onDownload={handleDownload} onImageFeedback={onImageFeedback} isLoadingFeedback={isLoading} />
                     </div>
                   ))}
                 </div>
@@ -685,7 +800,7 @@ export function CanvasPanel({ content, allItems = [], onClose, onExport, onSelec
                 <div className="grid gap-4 p-4">
                   {groupedItems.image.map((item, idx) => (
                     <div key={idx} className="border rounded-xl overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
-                      <CanvasContentRenderer content={item} onExport={onExport} isDownloading={isDownloading} onDownload={handleDownload} />
+                      <CanvasContentRenderer content={item} onExport={onExport} isDownloading={isDownloading} onDownload={handleDownload} onImageFeedback={onImageFeedback} isLoadingFeedback={isLoading} />
                     </div>
                   ))}
                 </div>
@@ -694,7 +809,7 @@ export function CanvasPanel({ content, allItems = [], onClose, onExport, onSelec
           </ScrollArea>
         ) : (
           // Single view - show selected item
-          currentItem && <CanvasContentRenderer content={currentItem} onExport={onExport} isDownloading={isDownloading} onDownload={handleDownload} />
+          currentItem && <CanvasContentRenderer content={currentItem} onExport={onExport} isDownloading={isDownloading} onDownload={handleDownload} onImageFeedback={onImageFeedback} isLoadingFeedback={isLoading} />
         )}
       </div>
 

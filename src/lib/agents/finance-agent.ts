@@ -12,6 +12,13 @@ import { financialOrchestrator, reportEvaluator } from './orchestrator'
 import { documentAnalyzer } from './document-analyzer'
 import { extractFinancialMetrics, transformToChartData, transformToTableData } from './json-mode'
 import { getKnowledgeBaseForUser } from '@/lib/knowledge/synthesis'
+import { ToolContextAccumulator, createToolContextAccumulator } from './tool-context'
+import {
+  isImageRefinementRequest,
+  parseImageRefinementRequest,
+  getRefinementPromptModifier,
+  generateImageId,
+} from './image-feedback-utils'
 
 // Initialize Anthropic client with beta headers for PDF support and prompt caching
 const anthropic = new Anthropic({
@@ -93,7 +100,20 @@ Example: For "What is variance analysis?", generate a demonstration image showin
 6. When asked to create/generate images, use generate_image tool
 7. When asked to export/download, use export_file tool
 
-Remember: NEVER respond without using at least generate_chart and generate_table tools!`
+Remember: NEVER respond without using at least generate_chart and generate_table tools!
+
+## Image Refinement Protocol
+When you receive a message starting with "[Image Refinement Request]":
+1. Parse the refinement action (regenerate, change_style, more_detail, simplify, different_layout, custom)
+2. Reference the original image context and user's new requirements
+3. Call generate_image with:
+   - The refined prompt incorporating the feedback
+   - The same type or a more appropriate type
+   - Enhanced context from your previous analysis
+4. Maintain visual consistency where appropriate
+5. Always acknowledge the user's feedback and explain what you changed
+
+For refinements, use the context from your previous tool executions (charts, tables, calculations) to create data-informed images.`
 
 /**
  * Build system prompt with user's knowledge base context
@@ -289,7 +309,7 @@ const financeTools: Anthropic.Tool[] = [
   },
   {
     name: 'generate_image',
-    description: 'Generate a professional AI image visualization using Gemini. Use this for creating infographics, dashboards, demonstration images, and custom financial visualizations. Use type "demonstration" to create educational visual aids that explain financial concepts.',
+    description: 'Generate a professional AI image visualization using Gemini. Use this for creating infographics, dashboards, demonstration images, and custom financial visualizations. Use type "demonstration" to create educational visual aids that explain financial concepts. For image refinements, include refinementOf and refinementType parameters.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -326,6 +346,23 @@ const financeTools: Anthropic.Tool[] = [
         context: {
           type: 'string',
           description: 'Additional context for demonstration images (e.g., user question being answered)',
+        },
+        refinementOf: {
+          type: 'string',
+          description: 'Image ID of the previous image being refined (for refinement requests)',
+        },
+        refinementType: {
+          type: 'string',
+          enum: ['regenerate', 'change_style', 'more_detail', 'simplify', 'different_layout', 'custom'],
+          description: 'Type of refinement being requested',
+        },
+        previousPrompt: {
+          type: 'string',
+          description: 'The original prompt used to generate the previous image (for context during refinement)',
+        },
+        analysisContext: {
+          type: 'string',
+          description: 'Context from previous tool executions (charts, calculations, tables) to inform the image generation',
         },
       },
       required: ['type', 'prompt'],
@@ -474,6 +511,9 @@ export interface StreamCallbacks {
   onDone: (usage: { inputTokens: number; outputTokens: number }) => void
   onError: (error: Error) => void
 }
+
+// Re-export ToolContextAccumulator for use in chat API
+export { ToolContextAccumulator, createToolContextAccumulator } from './tool-context'
 
 // Tool execution handlers
 async function executeSearchDocuments(input: { query: string; limit?: number; documentType?: string }, userId?: string) {
@@ -683,16 +723,32 @@ async function executeGenerateImage(input: {
   metrics?: { name: string; value: string | number; change?: number; trend?: 'up' | 'down' | 'neutral' }[]
   period?: string
   context?: string
+  refinementOf?: string
+  refinementType?: 'regenerate' | 'change_style' | 'more_detail' | 'simplify' | 'different_layout' | 'custom'
+  previousPrompt?: string
+  analysisContext?: string
 }) {
   try {
     let result: { imageData: string; mimeType: string; prompt: string }
+
+    // Build enhanced prompt with analysis context if available
+    let enhancedPrompt = input.prompt
+    if (input.analysisContext) {
+      enhancedPrompt = `${input.prompt}\n\n## Data Context from Analysis\n${input.analysisContext}`
+    }
+
+    // For refinements, apply the refinement modifier to the prompt
+    if (input.refinementType && input.previousPrompt) {
+      const modifier = getRefinementPromptModifier(input.refinementType, undefined, input.previousPrompt)
+      enhancedPrompt = `${modifier}\n\nNew prompt: ${input.prompt}`
+    }
 
     switch (input.type) {
       case 'dashboard':
         if (input.metrics && input.title) {
           result = await generateFinancialDashboard(input.title, input.metrics, input.period)
         } else {
-          result = await generateImage(input.prompt, { style: 'financial' })
+          result = await generateImage(enhancedPrompt, { style: 'financial' })
         }
         break
 
@@ -704,31 +760,38 @@ async function executeGenerateImage(input: {
           }))
           result = await generateInfographic(input.title, sections)
         } else {
-          result = await generateImage(input.prompt, { style: 'infographic' })
+          result = await generateImage(enhancedPrompt, { style: 'infographic' })
         }
         break
 
       case 'chart':
-        result = await generateImage(input.prompt, { style: 'chart' })
+        result = await generateImage(enhancedPrompt, { style: 'chart' })
         break
 
       case 'demonstration':
         // Generate educational demonstration image to explain financial concepts
-        result = await generateDemonstrationImage(input.prompt, input.context)
+        result = await generateDemonstrationImage(enhancedPrompt, input.context)
         break
 
       default:
-        result = await generateImage(input.prompt, { style: 'financial' })
+        result = await generateImage(enhancedPrompt, { style: 'financial' })
     }
+
+    // Generate unique image ID for tracking refinements
+    const imageId = generateImageId()
 
     // Return image data for display in canvas
     return {
       type: 'image',
       data: {
+        imageId,
         title: input.title || 'Generated Visualization',
         imageData: result.imageData,
         mimeType: result.mimeType,
         prompt: result.prompt,
+        originalPrompt: input.prompt,
+        refinementOf: input.refinementOf,
+        refinementType: input.refinementType,
       },
     }
   } catch (error) {
@@ -736,9 +799,11 @@ async function executeGenerateImage(input: {
     return {
       type: 'image',
       data: {
+        imageId: generateImageId(),
         title: input.title || 'Image Generation',
         error: error instanceof Error ? error.message : 'Failed to generate image',
         prompt: input.prompt,
+        originalPrompt: input.prompt,
       },
     }
   }
@@ -963,6 +1028,10 @@ async function executeTool(name: string, input: unknown, userId?: string): Promi
         metrics?: { name: string; value: string | number; change?: number; trend?: 'up' | 'down' | 'neutral' }[]
         period?: string
         context?: string
+        refinementOf?: string
+        refinementType?: 'regenerate' | 'change_style' | 'more_detail' | 'simplify' | 'different_layout' | 'custom'
+        previousPrompt?: string
+        analysisContext?: string
       })
     case 'complex_analysis':
       return executeComplexAnalysis(input as { query: string; targetAudience?: string })
@@ -999,6 +1068,7 @@ export async function streamFinanceChat(
     sessionId?: string
     userId?: string
     documentContext?: string // Optional document context for RAG
+    toolContextAccumulator?: ToolContextAccumulator // Accumulator for tool context (for image generation)
   }
 ) {
   try {
@@ -1103,6 +1173,11 @@ export async function streamFinanceChat(
           callbacks.onToolStart(toolUse.name, toolUse.input)
 
           const result = await executeTool(toolUse.name, toolUse.input, options?.userId)
+
+          // Accumulate tool context for image generation
+          if (options?.toolContextAccumulator) {
+            options.toolContextAccumulator.add(toolUse.name, result)
+          }
 
           callbacks.onToolResult(toolUse.name, result)
 
