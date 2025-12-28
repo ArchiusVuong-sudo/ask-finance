@@ -159,7 +159,7 @@ export function Sidebar({
                   <Link
                     href={`/chat/${thread.id}`}
                     className={cn(
-                      'flex items-center gap-2 px-3 py-2 pr-16 rounded-md text-sm transition-colors',
+                      'flex items-center gap-2 px-3 py-2 pr-9 rounded-md text-sm transition-colors',
                       isActive
                         ? 'bg-slate-700 text-white'
                         : 'text-slate-400 hover:text-white hover:bg-slate-800',
@@ -168,7 +168,7 @@ export function Sidebar({
                   >
                     <MessageSquarePlus className="h-4 w-4 shrink-0" />
                     {!collapsed && (
-                      <span className="truncate max-w-[140px]" title={thread.title || ''}>
+                      <span className="truncate" title={thread.title || ''}>
                         {thread.title}
                       </span>
                     )}
