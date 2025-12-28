@@ -119,25 +119,22 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   )
 }
 
-// Custom legend with stunning styling
+// Custom legend with clean styling
 const CustomLegend = ({ payload }: any) => {
   if (!payload || !payload.length) return null
 
   return (
-    <div className="flex flex-wrap justify-center gap-3 mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+    <div className="flex flex-wrap justify-center gap-4 mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
       {payload.map((entry: any, index: number) => (
         <div
           key={index}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 hover:shadow-md transition-all duration-200 cursor-default"
+          className="flex items-center gap-1.5"
         >
           <div
-            className="w-3 h-3 rounded-full shadow-sm"
-            style={{
-              backgroundColor: entry.color,
-              boxShadow: `0 0 8px ${entry.color}40`
-            }}
+            className="w-2.5 h-2.5 rounded-full"
+            style={{ backgroundColor: entry.color }}
           />
-          <span className="text-sm font-medium text-slate-600 dark:text-slate-300 capitalize">
+          <span className="text-xs text-muted-foreground capitalize">
             {entry.value?.replace(/_/g, ' ')}
           </span>
         </div>
