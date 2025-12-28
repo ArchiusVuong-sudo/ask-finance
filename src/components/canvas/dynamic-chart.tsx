@@ -527,28 +527,19 @@ export function DynamicChart({ data }: DynamicChartProps) {
       </div>
 
       {/* Footer Stats */}
-      <div className="mt-4 flex items-center justify-between">
+      <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
         <div className="flex items-center gap-3">
-          {/* Chart type badge */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900/40 dark:to-purple-900/40 border border-indigo-200 dark:border-indigo-800">
-            <ChartIcon className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-            <span className="text-sm font-medium text-indigo-700 dark:text-indigo-300 capitalize">
-              {chartType}
-            </span>
-          </div>
-          {/* Data keys */}
+          <span className="capitalize">{chartType}</span>
           {dataKeys.length > 0 && (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 border border-slate-200 dark:border-slate-600">
-              <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                {dataKeys.length} series
-              </span>
-            </div>
+            <>
+              <span className="text-slate-300 dark:text-slate-600">|</span>
+              <span>{dataKeys.length} series</span>
+            </>
           )}
         </div>
-
-        <span className="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+        <span className="flex items-center gap-1">
           <Activity className="w-3 h-3" />
-          Interactive • Hover for details
+          Interactive
         </span>
       </div>
     </div>
