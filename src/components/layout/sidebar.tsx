@@ -157,7 +157,7 @@ export function Sidebar({
                   />
                 ) : (
                   <div className={cn(
-                    'flex items-center rounded-md transition-colors',
+                    'flex items-center rounded-md transition-colors overflow-hidden',
                     isActive
                       ? 'bg-slate-700 text-white'
                       : 'text-slate-400 hover:text-white hover:bg-slate-800',
@@ -166,7 +166,7 @@ export function Sidebar({
                     <Link
                       href={`/chat/${thread.id}`}
                       className={cn(
-                        'flex items-center gap-2 px-3 py-2 min-w-0 flex-1',
+                        'flex items-center gap-2 px-3 py-2 min-w-0 flex-1 overflow-hidden',
                         collapsed && 'justify-center px-2'
                       )}
                     >
@@ -183,7 +183,7 @@ export function Sidebar({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 shrink-0 mr-1 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-white hover:bg-slate-600"
+                            className="h-7 w-7 shrink-0 mr-1 text-slate-400 hover:text-white hover:bg-slate-600"
                             onClick={(e) => e.preventDefault()}
                           >
                             <MoreHorizontal className="h-4 w-4" />
