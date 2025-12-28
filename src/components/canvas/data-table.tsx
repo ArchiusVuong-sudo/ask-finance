@@ -315,27 +315,15 @@ export function DataTable({ data }: DataTableProps) {
       </div>
 
       {/* Footer with stats */}
-      <div className="mt-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          {/* Row count badge */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border border-blue-200 dark:border-blue-800">
-            <div className="w-2 h-2 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 animate-pulse" />
-            <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-              {rows.length} row{rows.length !== 1 ? 's' : ''}
-            </span>
-          </div>
-          {/* Column count badge */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/40 dark:to-pink-900/40 border border-purple-200 dark:border-purple-800">
-            <div className="w-2 h-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500" />
-            <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
-              {columns.length} column{columns.length !== 1 ? 's' : ''}
-            </span>
-          </div>
+      <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+        <div className="flex items-center gap-3">
+          <span>{rows.length} row{rows.length !== 1 ? 's' : ''}</span>
+          <span className="text-slate-300 dark:text-slate-600">|</span>
+          <span>{columns.length} column{columns.length !== 1 ? 's' : ''}</span>
         </div>
-
-        <span className="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+        <span className="flex items-center gap-1">
           <Activity className="w-3 h-3" />
-          Updated: {new Date().toLocaleTimeString()}
+          {new Date().toLocaleTimeString()}
         </span>
       </div>
     </div>
