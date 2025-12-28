@@ -31,6 +31,7 @@ import {
   Pencil,
   ChevronLeft,
   ChevronRight,
+  MoreHorizontal,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Profile, Thread } from '@/types/database'
@@ -175,33 +176,40 @@ export function Sidebar({
                 )}
 
                 {!collapsed && !isEditing && (
-                  <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        startEditing(thread)
-                      }}
-                      className="h-7 w-7 text-slate-400 hover:text-white hover:bg-slate-700"
-                      title="Rename"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        onDeleteThread(thread.id)
-                      }}
-                      className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-slate-700"
-                      title="Delete"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                  <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-slate-400 hover:text-white hover:bg-slate-700"
+                          onClick={(e) => e.preventDefault()}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-40">
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            startEditing(thread)
+                          }}
+                        >
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Rename
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onDeleteThread(thread.id)
+                          }}
+                          className="text-red-500 focus:text-red-500"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 )}
               </div>
