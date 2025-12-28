@@ -420,12 +420,15 @@ async function executeSearchDocuments(input: { query: string; limit?: number; do
     // Generate embedding for the query
     const embedding = await generateEmbedding(input.query)
 
-    // Perform vector search
+    // Perform vector search with user filtering for knowledge base isolation
+    // Only searches user's own documents and enabled documents
     const { data: chunks, error } = await supabase
       .rpc('match_document_chunks', {
         query_embedding: JSON.stringify(embedding),
         match_threshold: 0.5,
         match_count: input.limit || 5,
+        filter_user_id: userId || null, // Filter by user for isolation
+        include_disabled: false, // Only search enabled documents
       })
 
     if (error || !chunks || chunks.length === 0) {

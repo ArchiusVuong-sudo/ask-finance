@@ -110,52 +110,70 @@ export type Database = {
         Row: {
           business_unit_id: string | null
           created_at: string | null
+          description: string | null
           document_type: Database["public"]["Enums"]["document_type"] | null
           file_path: string
           file_size: number | null
           finance_metadata: Json | null
           id: string
+          is_enabled: boolean | null
+          is_latest: boolean | null
           mime_type: string | null
           name: string
           organization_id: string | null
+          parent_id: string | null
           processing_error: string | null
           status: Database["public"]["Enums"]["document_status"] | null
+          tags: string[] | null
           updated_at: string | null
           user_id: string | null
+          version: number | null
           visibility: string | null
         }
         Insert: {
           business_unit_id?: string | null
           created_at?: string | null
+          description?: string | null
           document_type?: Database["public"]["Enums"]["document_type"] | null
           file_path: string
           file_size?: number | null
           finance_metadata?: Json | null
           id?: string
+          is_enabled?: boolean | null
+          is_latest?: boolean | null
           mime_type?: string | null
           name: string
           organization_id?: string | null
+          parent_id?: string | null
           processing_error?: string | null
           status?: Database["public"]["Enums"]["document_status"] | null
+          tags?: string[] | null
           updated_at?: string | null
           user_id?: string | null
+          version?: number | null
           visibility?: string | null
         }
         Update: {
           business_unit_id?: string | null
           created_at?: string | null
+          description?: string | null
           document_type?: Database["public"]["Enums"]["document_type"] | null
           file_path?: string
           file_size?: number | null
           finance_metadata?: Json | null
           id?: string
+          is_enabled?: boolean | null
+          is_latest?: boolean | null
           mime_type?: string | null
           name?: string
           organization_id?: string | null
+          parent_id?: string | null
           processing_error?: string | null
           status?: Database["public"]["Enums"]["document_status"] | null
+          tags?: string[] | null
           updated_at?: string | null
           user_id?: string | null
+          version?: number | null
           visibility?: string | null
         }
         Relationships: [
