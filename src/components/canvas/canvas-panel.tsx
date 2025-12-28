@@ -104,21 +104,21 @@ function CanvasThumbnail({
     <button
       onClick={onClick}
       className={cn(
-        'flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200 min-w-[100px]',
-        'hover:shadow-lg hover:scale-105',
+        'flex flex-col items-center gap-1.5 p-2 rounded-lg border-2 transition-all duration-200 min-w-[70px]',
+        'hover:shadow-md hover:scale-105',
         isActive
-          ? `border-transparent bg-gradient-to-br ${config.gradient} text-white shadow-lg`
+          ? `border-transparent bg-gradient-to-br ${config.gradient} text-white shadow-md`
           : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300'
       )}
     >
       <div className={cn(
-        'p-2 rounded-lg',
+        'p-1.5 rounded-md',
         isActive ? 'bg-white/20' : config.bgColor
       )}>
-        <Icon className={cn('h-5 w-5', isActive ? 'text-white' : config.color)} />
+        <Icon className={cn('h-4 w-4', isActive ? 'text-white' : config.color)} />
       </div>
       <span className={cn(
-        'text-xs font-medium truncate max-w-[80px]',
+        'text-[10px] font-medium truncate max-w-[60px]',
         isActive ? 'text-white' : 'text-slate-600 dark:text-slate-300'
       )}>
         {title}
@@ -452,63 +452,63 @@ export function CanvasPanel({ content, allItems = [], onClose, onExport, onSelec
         isExpanded
           ? 'w-full absolute inset-0 z-50'
           : viewMode === 'split'
-            ? 'w-[55vw] min-w-[800px] max-w-[1200px]'
-            : 'w-[550px] min-w-[500px]'
+            ? 'w-[55vw] min-w-[400px] max-w-[1200px]'
+            : 'w-[400px] min-w-[320px]'
       )}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
-        <div className="flex items-center gap-3">
-          <div className={cn('p-2 rounded-lg', config.bgColor)}>
+      <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/30 gap-2">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div className={cn('p-1.5 rounded-lg shrink-0', config.bgColor)}>
             <Icon className={cn('h-4 w-4', config.color)} />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-medium text-sm">{config.title}</h3>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <h3 className="font-medium text-sm truncate">{config.title}</h3>
               {items.length > 1 && (
-                <Badge variant="secondary" className="text-xs">
-                  {selectedIndex + 1} / {items.length}
+                <Badge variant="secondary" className="text-xs shrink-0">
+                  {selectedIndex + 1}/{items.length}
                 </Badge>
               )}
             </div>
             {currentItem?.data?.title && (
-              <p className="text-xs text-muted-foreground truncate max-w-[250px]">
+              <p className="text-xs text-muted-foreground truncate">
                 {currentItem.data.title}
               </p>
             )}
           </div>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5 shrink-0">
           {/* View mode toggles */}
           {items.length > 1 && (
-            <div className="flex items-center gap-0.5 mr-2 p-0.5 bg-muted rounded-lg">
+            <div className="flex items-center gap-0.5 mr-1 p-0.5 bg-muted rounded-md">
               <Button
                 variant={viewMode === 'single' ? 'secondary' : 'ghost'}
                 size="icon"
-                className="h-7 w-7"
+                className="h-6 w-6"
                 onClick={() => setViewMode('single')}
                 title="Single view"
               >
-                <Layers className="h-3.5 w-3.5" />
+                <Layers className="h-3 w-3" />
               </Button>
               <Button
                 variant={viewMode === 'gallery' ? 'secondary' : 'ghost'}
                 size="icon"
-                className="h-7 w-7"
+                className="h-6 w-6"
                 onClick={() => setViewMode('gallery')}
                 title="Gallery view"
               >
-                <GalleryHorizontal className="h-3.5 w-3.5" />
+                <GalleryHorizontal className="h-3 w-3" />
               </Button>
               <Button
                 variant={viewMode === 'split' ? 'secondary' : 'ghost'}
                 size="icon"
-                className="h-7 w-7"
+                className="h-6 w-6"
                 onClick={() => setViewMode('split')}
                 title="Split view"
               >
-                <Grid3X3 className="h-3.5 w-3.5" />
+                <Grid3X3 className="h-3 w-3" />
               </Button>
             </div>
           )}
@@ -516,30 +516,30 @@ export function CanvasPanel({ content, allItems = [], onClose, onExport, onSelec
           {/* Navigation arrows */}
           {items.length > 1 && viewMode === 'single' && (
             <>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handlePrev}>
-                <ChevronLeft className="h-4 w-4" />
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handlePrev}>
+                <ChevronLeft className="h-3.5 w-3.5" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleNext}>
-                <ChevronRight className="h-4 w-4" />
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleNext}>
+                <ChevronRight className="h-3.5 w-3.5" />
               </Button>
             </>
           )}
 
           {onExport && currentItem?.type !== 'export' && (
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onExport('excel')}>
-              <Download className="h-4 w-4" />
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onExport('excel')}>
+              <Download className="h-3.5 w-3.5" />
             </Button>
           )}
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-7 w-7"
             onClick={() => setIsExpanded(!isExpanded)}
           >
-            {isExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            {isExpanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
-            <X className="h-4 w-4" />
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
+            <X className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>
@@ -569,15 +569,15 @@ export function CanvasPanel({ content, allItems = [], onClose, onExport, onSelec
           <div className="flex h-full divide-x">
             {/* Left: Charts */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-              <div className="p-2 border-b bg-muted/30 shrink-0">
-                <div className="flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4 text-emerald-500" />
-                  <span className="text-sm font-medium">Charts ({groupedItems.chart.length})</span>
+              <div className="px-2 py-1.5 border-b bg-muted/30 shrink-0">
+                <div className="flex items-center gap-1.5">
+                  <BarChart3 className="h-3.5 w-3.5 text-emerald-500" />
+                  <span className="text-xs font-medium">Charts ({groupedItems.chart.length})</span>
                 </div>
               </div>
               <div className="flex-1 overflow-auto">
                 {groupedItems.chart.length > 0 ? (
-                  <div className="space-y-4 p-3">
+                  <div className="space-y-3 p-2">
                     {groupedItems.chart.map((item, idx) => (
                       <div key={idx} className="border rounded-lg overflow-hidden bg-white dark:bg-slate-900">
                         <CanvasContentRenderer content={item} onExport={onExport} isDownloading={isDownloading} onDownload={handleDownload} />
@@ -585,8 +585,8 @@ export function CanvasPanel({ content, allItems = [], onClose, onExport, onSelec
                     ))}
                   </div>
                 ) : (
-                  <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
-                    No charts generated yet
+                  <div className="flex items-center justify-center h-32 text-muted-foreground text-xs">
+                    No charts yet
                   </div>
                 )}
               </div>
@@ -594,15 +594,15 @@ export function CanvasPanel({ content, allItems = [], onClose, onExport, onSelec
 
             {/* Right: Tables */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-              <div className="p-2 border-b bg-muted/30 shrink-0">
-                <div className="flex items-center gap-2">
-                  <Table2 className="h-4 w-4 text-blue-500" />
-                  <span className="text-sm font-medium">Tables ({groupedItems.table.length})</span>
+              <div className="px-2 py-1.5 border-b bg-muted/30 shrink-0">
+                <div className="flex items-center gap-1.5">
+                  <Table2 className="h-3.5 w-3.5 text-blue-500" />
+                  <span className="text-xs font-medium">Tables ({groupedItems.table.length})</span>
                 </div>
               </div>
               <div className="flex-1 overflow-auto">
                 {groupedItems.table.length > 0 ? (
-                  <div className="space-y-4 p-3">
+                  <div className="space-y-3 p-2">
                     {groupedItems.table.map((item, idx) => (
                       <div key={idx} className="border rounded-lg overflow-hidden bg-white dark:bg-slate-900">
                         <CanvasContentRenderer content={item} onExport={onExport} isDownloading={isDownloading} onDownload={handleDownload} />
@@ -610,8 +610,8 @@ export function CanvasPanel({ content, allItems = [], onClose, onExport, onSelec
                     ))}
                   </div>
                 ) : (
-                  <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
-                    No tables generated yet
+                  <div className="flex items-center justify-center h-32 text-muted-foreground text-xs">
+                    No tables yet
                   </div>
                 )}
               </div>
@@ -621,23 +621,23 @@ export function CanvasPanel({ content, allItems = [], onClose, onExport, onSelec
           // Gallery view - show all items in a scrollable grid
           <ScrollArea className="h-full">
             <Tabs defaultValue="all" className="w-full">
-              <div className="px-4 pt-2 border-b sticky top-0 bg-background z-10">
-                <TabsList className="w-full justify-start">
-                  <TabsTrigger value="all" className="text-xs">
+              <div className="px-2 pt-2 border-b sticky top-0 bg-background z-10 overflow-x-auto">
+                <TabsList className="inline-flex w-max gap-1 flex-nowrap">
+                  <TabsTrigger value="all" className="text-xs px-2 py-1 whitespace-nowrap">
                     All ({items.length})
                   </TabsTrigger>
                   {groupedItems.chart.length > 0 && (
-                    <TabsTrigger value="charts" className="text-xs">
+                    <TabsTrigger value="charts" className="text-xs px-2 py-1 whitespace-nowrap">
                       Charts ({groupedItems.chart.length})
                     </TabsTrigger>
                   )}
                   {groupedItems.table.length > 0 && (
-                    <TabsTrigger value="tables" className="text-xs">
+                    <TabsTrigger value="tables" className="text-xs px-2 py-1 whitespace-nowrap">
                       Tables ({groupedItems.table.length})
                     </TabsTrigger>
                   )}
                   {groupedItems.image.length > 0 && (
-                    <TabsTrigger value="images" className="text-xs">
+                    <TabsTrigger value="images" className="text-xs px-2 py-1 whitespace-nowrap">
                       Images ({groupedItems.image.length})
                     </TabsTrigger>
                   )}
