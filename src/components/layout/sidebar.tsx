@@ -156,63 +156,62 @@ export function Sidebar({
                     autoFocus
                   />
                 ) : (
-                  <div className={cn(
-                    'flex items-center rounded-md transition-colors overflow-hidden',
-                    isActive
-                      ? 'bg-slate-700 text-white'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-800',
-                    collapsed && 'justify-center'
-                  )}>
+                  <>
                     <Link
                       href={`/chat/${thread.id}`}
                       className={cn(
-                        'flex items-center gap-2 px-3 py-2 min-w-0 flex-1 overflow-hidden',
-                        collapsed && 'justify-center px-2'
+                        'flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors',
+                        isActive
+                          ? 'bg-slate-700 text-white'
+                          : 'text-slate-400 hover:text-white hover:bg-slate-800',
+                        collapsed ? 'justify-center px-2' : 'pr-8'
                       )}
                     >
                       <MessageSquarePlus className="h-4 w-4 shrink-0" />
                       {!collapsed && (
-                        <span className="truncate text-sm" title={thread.title || ''}>
+                        <span className="truncate" title={thread.title || ''}>
                           {thread.title}
                         </span>
                       )}
                     </Link>
                     {!collapsed && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 shrink-0 mr-1 text-slate-400 hover:text-white hover:bg-slate-600"
-                            onClick={(e) => e.preventDefault()}
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-40">
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              startEditing(thread)
-                            }}
-                          >
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Rename
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onDeleteThread(thread.id)
-                            }}
-                            className="text-red-500 focus:text-red-500"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-slate-400 hover:text-white hover:bg-slate-600"
+                              onClick={(e) => e.preventDefault()}
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-40">
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                startEditing(thread)
+                              }}
+                            >
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Rename
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onDeleteThread(thread.id)
+                              }}
+                              className="text-red-500 focus:text-red-500"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     )}
-                  </div>
+                  </>
                 )}
               </div>
             )
